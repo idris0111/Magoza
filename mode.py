@@ -78,10 +78,7 @@ class OrderItem(Base):
     quantity = Column(Integer, nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
 
-    __table_args__ = (
-        CheckConstraint('quantity >= 1'),
-        CheckConstraint('price > 0'),
-    )
+    __table_args__ = (CheckConstraint('quantity >= 1'),CheckConstraint('price > 0'),)
 
     order = relationship('Order', back_populates='items')
     product = relationship('Product', back_populates='order_items')
@@ -100,9 +97,7 @@ class Review(Base):
     comment = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
-    __table_args__ = (
-        CheckConstraint('rating BETWEEN 1 AND 5'),
-    )
+    __table_args__ = (CheckConstraint('rating BETWEEN 1 AND 5'),)
 
     user = relationship('User', back_populates='reviews')
     product = relationship('Product', back_populates='reviews')
