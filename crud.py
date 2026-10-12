@@ -203,3 +203,82 @@ def clear_cart(db:Session,user_id:int):
     db.query(CartItem).filter(CartItem.user_id==user_id).delete()
     db.commit()
     return {'message':'Cart cleared'}
+
+def create_order(db:Session,order:OrderCreate):
+    get_user(db,order.user_id)
+    items = db.query(CartItem).filter(CartItem.user_id==order.user_id).all()
+    if not items:
+        raise HTTPException(status_code=400,detail='Cart is empty')
+    for item in items:
+        if item.quantity>item.product.stock:
+            raise HTTPException(status_code=400,detail='Not enough stock')
+    try:
+        new_order = Order(user_id=order.user_id,status='NEW',total_price=0)
+        db.add(new_order)
+        db.flush()
+        total = Decimal('0.00')
+        for item in items:
+            product = item.product
+            changed = db.query(Product).filter(Product.id==product.id,Product.stock>=item.quantity).update({Product.stock:Product.stock-item.quantity},synchronize_session=False)
+            if changed==0:
+                raise HTTPException(status_code=400,detail='Not enough stock')
+            new_item = OrderItem(order_id=new_order.id,product_id=product.id,product_name=product.name,quantity=item.quantity,price=product.price)
+            db.add(new_item)
+            total += product.price*item.quantity
+            db.delete(item)
+        new_order.total_price = total
+        db.commit()
+        db.refresh(new_order)
+        return new_order
+    except Exception:
+        db.rollback()
+        raise
+
+def get_orders(db:Session,status:str=None,page:int=1,size:int=10):
+    if page<1 or size<1:
+        raise HTTPException(status_code=400,detail='Invalid page or size')
+    orders = db.query(Order)
+    if status:
+        orders = orders.filter(Order.status==status)
+    total = orders.count()
+    items = orders.order_by(Order.id.desc()).offset((page-1)*size).limit(size).all()
+    return {'total':total,'page':page,'size':size,'pages':(total+size-1)//size,'items':items}
+
+def get_order(db:Session,pk:int):
+    order = db.query(Order).filter(Order.id==pk).first()
+    if not order:
+        raise HTTPException(status_code=404,detail='Order not found')
+    return order
+
+def get_user_orders(db:Session,user_id:int):
+    get_user(db,user_id)
+    return db.query(Order).filter(Order.user_id==user_id).order_by(Order.id.desc()).all()
+
+def cancel_order(db:Session,pk:int):
+    order = get_order(db,pk)
+    if order.status!='NEW':
+        raise HTTPException(status_code=400,detail='Only NEW order can be cancelled')
+    try:
+        changed = db.query(Order).filter(Order.id==pk,Order.status=='NEW').update({Order.status:'CANCELLED'},synchronize_session=False)
+        if changed==0:
+            raise HTTPException(status_code=400,detail='Order already processed')
+        for item in order.items:
+            if item.product_id is not None:
+                db.query(Product).filter(Product.id==item.product_id).update({Product.stock:Product.stock+item.quantity},synchronize_session=False)
+        db.commit()
+        db.refresh(order)
+        return order
+    except Exception:
+        db.rollback()
+        raise
+
+def update_order_status(db:Session,pk:int,data:OrderStatusUpdate):
+    order = get_order(db,pk)
+    if data.status=='CANCELLED':
+        return cancel_order(db,pk)
+    if order.status!='NEW' or data.status!='PAID':
+        raise HTTPException(status_code=400,detail='Only NEW order can become PAID')
+    order.status = 'PAID'
+    db.commit()
+    db.refresh(order)
+    return order
