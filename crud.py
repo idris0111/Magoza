@@ -151,3 +151,55 @@ def delete_product(db:Session,pk:int):
 
 def get_low_stock_products(db:Session):
     return db.query(Product).filter(Product.stock<5).all()
+
+
+def get_cart(db:Session,user_id:int):
+    get_user(db,user_id)
+    items = db.query(CartItem).filter(CartItem.user_id==user_id).all()
+    total = Decimal('0.00')
+    for item in items:
+        total += item.subtotal
+    return {'user_id':user_id,'items':items,'total_price':total}
+
+def add_to_cart(db:Session,cart:CartAdd):
+    get_user(db,cart.user_id)
+    product = get_product(db,cart.product_id)
+    item = db.query(CartItem).filter(CartItem.user_id==cart.user_id,CartItem.product_id==cart.product_id).first()
+    quantity = cart.quantity
+    if item:
+        quantity += item.quantity
+    if quantity>product.stock:
+        raise HTTPException(status_code=400,detail='Not enough stock')
+    if item:
+        item.quantity = quantity
+    else:
+        item = CartItem(user_id=cart.user_id,product_id=cart.product_id,quantity=cart.quantity)
+        db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+def update_cart_item(db:Session,pk:int,user_id:int,cart:CartQuantityUpdate):
+    item = db.query(CartItem).filter(CartItem.id==pk,CartItem.user_id==user_id).first()
+    if not item:
+        raise HTTPException(status_code=404,detail='Cart item not found')
+    if cart.quantity>item.product.stock:
+        raise HTTPException(status_code=400,detail='Not enough stock')
+    item.quantity = cart.quantity
+    db.commit()
+    db.refresh(item)
+    return item
+
+def delete_cart_item(db:Session,pk:int,user_id:int):
+    item = db.query(CartItem).filter(CartItem.id==pk,CartItem.user_id==user_id).first()
+    if not item:
+        raise HTTPException(status_code=404,detail='Cart item not found')
+    db.delete(item)
+    db.commit()
+    return {'message':'Cart item deleted'}
+
+def clear_cart(db:Session,user_id:int):
+    get_user(db,user_id)
+    db.query(CartItem).filter(CartItem.user_id==user_id).delete()
+    db.commit()
+    return {'message':'Cart cleared'}
