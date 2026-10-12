@@ -40,7 +40,6 @@ class Product(Base):
 
 class CartItem(Base):
     __tablename__ = 'cart_items'
-
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
@@ -54,6 +53,8 @@ class CartItem(Base):
     def subtotal(self):
         return self.product.price * self.quantity
 
+
+class Order(Base):
     __tablename__ = 'orders'
 
     id = Column(Integer, primary_key=True)
@@ -66,3 +67,51 @@ class CartItem(Base):
     user = relationship('User', back_populates='orders')
     items = relationship('OrderItem', back_populates='order', cascade='all, delete-orphan')
 
+
+class OrderItem(Base):
+    __tablename__ = 'order_items'
+
+    id = Column(Integer, primary_key=True)
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id', ondelete='SET NULL'), nullable=True)
+    product_name = Column(String(150), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint('quantity >= 1'),
+        CheckConstraint('price > 0'),
+    )
+
+    order = relationship('Order', back_populates='items')
+    product = relationship('Product', back_populates='order_items')
+
+    @property
+    def subtotal(self):
+        return self.price * self.quantity
+
+class Review(Base):
+    __tablename__ = 'reviews'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint('rating BETWEEN 1 AND 5'),
+    )
+
+    user = relationship('User', back_populates='reviews')
+    product = relationship('Product', back_populates='reviews')
+
+class Favorite(Base):
+    __tablename__ = 'favorites'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    __table_args__ = (UniqueConstraint('user_id', 'product_id'),)
+    user = relationship('User', back_populates='favorites')
+    product = relationship('Product', back_populates='favorites')
