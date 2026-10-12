@@ -53,7 +53,6 @@ class ProductShort(BaseModel):
     name: str
     price: Decimal
     stock: int
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -61,7 +60,6 @@ class ProductRead(ProductCreate):
     id: int
     category: CategoryRead
     average_rating: float | None = None
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -75,4 +73,31 @@ class ProductPage(BaseModel):
     size: int
     pages: int
     items: list[ProductRead]
+
+class CartAdd(BaseModel):
+    user_id: int = Field(gt=0)
+    product_id: int = Field(gt=0)
+    quantity: int = Field(default=1, ge=1)
+
+class CartQuantityUpdate(BaseModel):
+    quantity: int = Field(ge=1)
+
+class CartDecrease(BaseModel):
+    amount: int = Field(default=1, ge=1)
+
+class CartItemRead(BaseModel):
+    id: int
+    user_id: int
+    product_id: int
+    quantity: int
+    product: ProductShort
+    subtotal: Decimal
+    model_config = ConfigDict(from_attributes=True)
+
+class CartRead(BaseModel):
+    user_id: int
+    items: list[CartItemRead]
+    total_price: Decimal
+
+
 
