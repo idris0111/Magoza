@@ -125,4 +125,17 @@ def order_status_update(pk:int,data:OrderStatusUpdate,db:Session=Depends(get_db)
 def order_cancel(pk:int,db:Session=Depends(get_db)):
     return crud.cancel_order(db,pk)
 
+# Purchase History
+@app.get('/users/{user_id}/orders/',response_model=list[OrderShort],tags=['Purchase History'])
+def user_orders(user_id:int,db:Session=Depends(get_db)):
+    return crud.get_user_orders(db,user_id)
+
+@app.get('/users/{user_id}/purchases/',response_model=list[OrderRead],tags=['Purchase History'])
+def purchase_history(user_id:int,db:Session=Depends(get_db)):
+    return crud.get_purchase_history(db,user_id)
+
+@app.get('/users/{user_id}/statistics/',response_model=UserStatistics,tags=['Purchase History'])
+def user_statistics(user_id:int,db:Session=Depends(get_db)):
+    return crud.get_user_statistics(db,user_id)
+
 
