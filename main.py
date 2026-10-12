@@ -83,3 +83,25 @@ def product_update(pk:int,product:ProductUpdate,db:Session=Depends(get_db)):
 def product_delete(pk:int,db:Session=Depends(get_db)):
     return crud.delete_product(db,pk)
 
+
+@app.post('/cart/add/',response_model=CartItemRead,tags=['Cart'])
+def cart_add(cart:CartAdd,db:Session=Depends(get_db)):
+    return crud.add_to_cart(db,cart)
+
+@app.get('/cart/{user_id}/',response_model=CartRead,tags=['Cart'])
+def cart_detail(user_id:int,db:Session=Depends(get_db)):
+    return crud.get_cart(db,user_id)
+
+@app.put('/cart/items/{pk}/',response_model=CartItemRead,tags=['Cart'])
+def cart_item_update(pk:int,user_id:int,cart:CartQuantityUpdate,db:Session=Depends(get_db)):
+    return crud.update_cart_item(db,pk,user_id,cart)
+
+@app.delete('/cart/items/{pk}/',tags=['Cart'])
+def cart_item_delete(pk:int,user_id:int,db:Session=Depends(get_db)):
+    return crud.delete_cart_item(db,pk,user_id)
+
+@app.delete('/cart/clear/{user_id}/',tags=['Cart'])
+def cart_clear(user_id:int,db:Session=Depends(get_db)):
+    return crud.clear_cart(db,user_id)
+
+
