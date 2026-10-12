@@ -155,5 +155,23 @@ class UserStatistics(BaseModel):
     most_expensive_order: OrderShort | None = None
     purchased_products: list[PurchasedProductRead] = Field(default_factory=list)
 
-PurchasedProductRead,UserStatistics
+class ReviewCreate(BaseModel):
+    user_id: int = Field(gt=0)
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = None
+
+
+class ReviewRead(ReviewCreate):
+    id: int
+    product_id: int
+    created_at: datetime
+    user: UserShort
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductReviewsRead(BaseModel):
+    product_id: int
+    average_rating: float | None = None
+    reviews_count: int
+    reviews: list[ReviewRead]
 
