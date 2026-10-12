@@ -2,6 +2,7 @@
 from fastapi import FastAPI, Depends, Query
 from sqlalchemy.orm import Session
 from database import Base, engine, get_db
+from decimal import Decimal
 from schemas import *
 import crud
 import model
@@ -11,9 +12,10 @@ app = FastAPI(title='Internet Shop API')
 Base.metadata.create_all(bind=engine)
 
 
-@app.get('/users/',response_model=list[UserRead],tags=['Users'])
-def users(db:Session=Depends(get_db)):
-    return crud.get_users(db)
+@app.get('/products/',response_model=ProductPage,tags=['Products'])
+def products(search:str=None,category_id:int=None,sort_price:str=None,page:int=Query(1,ge=1),size:int=Query(10,ge=1,le=100),min_price:Decimal=None,max_price:Decimal=None,db:Session=Depends(get_db)):
+    return crud.get_products(db,search,category_id,sort_price,page,size,min_price,max_price)
+
 
 @app.get('/users/{pk}/',response_model=UserRead,tags=['Users'])
 def user_detail(pk:int,db:Session=Depends(get_db)):
@@ -30,6 +32,11 @@ def user_update(pk:int,user:UserUpdate,db:Session=Depends(get_db)):
 @app.delete('/users/{pk}/',tags=['Users'])
 def user_delete(pk:int,db:Session=Depends(get_db)):
     return crud.delete_user(db,pk)
+
+
+@app.get('/users/{user_id}/purchased-products/',response_model=list[PurchasedProductRead],tags=['Purchase History'])
+def purchased_products(user_id:int,db:Session=Depends(get_db)):
+    return crud.get_purchased_products(db,user_id)
 
 
 
