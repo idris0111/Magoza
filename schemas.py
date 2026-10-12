@@ -175,3 +175,26 @@ class ProductReviewsRead(BaseModel):
     reviews_count: int
     reviews: list[ReviewRead]
 
+class FavoriteCreate(BaseModel):
+    user_id: int = Field(gt=0)
+    product_id: int = Field(gt=0)
+
+
+class FavoriteRead(FavoriteCreate):
+    id: int
+    product: ProductShort
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ShopStatistics(BaseModel):
+    users_count: int
+    products_count: int
+    categories_count: int
+    orders_count: int
+    orders_total: Decimal
+    average_order_total: Decimal
+    best_selling_product: ProductShort | None = None
+    most_expensive_product: ProductShort | None = None
+    cheapest_product: ProductShort | None = None
+    low_stock_products: list[ProductShort] = Field(default_factory=list)
+    top_spending_user: UserShort | None = None
