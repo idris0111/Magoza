@@ -321,3 +321,27 @@ def delete_review(db:Session,pk:int,user_id:int):
     db.commit()
     return {'message':'Review deleted'}
 
+
+def add_favorite(db:Session,favorite:FavoriteCreate):
+    get_user(db,favorite.user_id)
+    get_product(db,favorite.product_id)
+    old = db.query(Favorite).filter(Favorite.user_id==favorite.user_id,Favorite.product_id==favorite.product_id).first()
+    if old:
+        raise HTTPException(status_code=400,detail='Already in favorites')
+    new_favorite = Favorite(user_id=favorite.user_id,product_id=favorite.product_id)
+    db.add(new_favorite)
+    db.commit()
+    db.refresh(new_favorite)
+    return new_favorite
+
+def get_favorites(db:Session,user_id:int):
+    get_user(db,user_id)
+    return db.query(Favorite).filter(Favorite.user_id==user_id).all()
+
+def delete_favorite(db:Session,pk:int,user_id:int):
+    favorite = db.query(Favorite).filter(Favorite.id==pk,Favorite.user_id==user_id).first()
+    if not favorite:
+        raise HTTPException(status_code=404,detail='Favorite not found')
+    db.delete(favorite)
+    db.commit()
+    return {'message':'Favorite deleted'}
