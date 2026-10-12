@@ -101,3 +101,42 @@ class CartRead(BaseModel):
 
 
 
+class OrderCreate(BaseModel):
+    user_id: int = Field(gt=0)
+
+
+class OrderStatusUpdate(BaseModel):
+    status: Literal['NEW', 'PAID', 'CANCELLED']
+
+
+class OrderItemRead(BaseModel):
+    id: int
+    product_id: int | None
+    product_name: str
+    quantity: int
+    price: Decimal
+    subtotal: Decimal
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrderShort(BaseModel):
+    id: int
+    user_id: int
+    total_price: Decimal
+    status: Literal['NEW', 'PAID', 'CANCELLED']
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrderRead(OrderShort):
+    items: list[OrderItemRead] = Field(default_factory=list)
+
+
+class OrderPage(BaseModel):
+    total: int
+    page: int
+    size: int
+    pages: int
+    items: list[OrderShort]
+
+OrderCreate,OrderStatusUpdate,OrderItemRead,OrderShort,OrderRead,OrderPage
