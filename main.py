@@ -58,3 +58,28 @@ def category_delete(pk:int,db:Session=Depends(get_db)):
 def category_products(pk:int,db:Session=Depends(get_db)):
     return crud.get_category_products(db,pk)
 
+
+@app.get('/products/',response_model=ProductPage,tags=['Products'])
+def products(search:str=None,category_id:int=None,sort_price:str=None,page:int=Query(1,ge=1),size:int=Query(10,ge=1,le=100),db:Session=Depends(get_db)):
+    return crud.get_products(db,search,category_id,sort_price,page,size)
+
+@app.get('/products/low-stock/',response_model=list[ProductShort],tags=['Products'])
+def low_stock_products(db:Session=Depends(get_db)):
+    return crud.get_low_stock_products(db)
+
+@app.get('/products/{pk}/',response_model=ProductRead,tags=['Products'])
+def product_detail(pk:int,db:Session=Depends(get_db)):
+    return crud.get_product(db,pk)
+
+@app.post('/products/',response_model=ProductRead,tags=['Products'])
+def product_create(product:ProductCreate,db:Session=Depends(get_db)):
+    return crud.create_product(db,product)
+
+@app.put('/products/{pk}/',response_model=ProductRead,tags=['Products'])
+def product_update(pk:int,product:ProductUpdate,db:Session=Depends(get_db)):
+    return crud.update_product(db,pk,product)
+
+@app.delete('/products/{pk}/',tags=['Products'])
+def product_delete(pk:int,db:Session=Depends(get_db)):
+    return crud.delete_product(db,pk)
+
