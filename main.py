@@ -105,3 +105,24 @@ def cart_clear(user_id:int,db:Session=Depends(get_db)):
     return crud.clear_cart(db,user_id)
 
 
+@app.post('/orders/create/',response_model=OrderRead,tags=['Orders'])
+def order_create(order:OrderCreate,db:Session=Depends(get_db)):
+    return crud.create_order(db,order)
+
+@app.get('/orders/',response_model=OrderPage,tags=['Orders'])
+def orders(status:str=None,page:int=Query(1,ge=1),size:int=Query(10,ge=1,le=100),db:Session=Depends(get_db)):
+    return crud.get_orders(db,status,page,size)
+
+@app.get('/orders/{pk}/',response_model=OrderRead,tags=['Orders'])
+def order_detail(pk:int,db:Session=Depends(get_db)):
+    return crud.get_order(db,pk)
+
+@app.put('/orders/{pk}/status/',response_model=OrderRead,tags=['Orders'])
+def order_status_update(pk:int,data:OrderStatusUpdate,db:Session=Depends(get_db)):
+    return crud.update_order_status(db,pk,data)
+
+@app.post('/orders/{pk}/cancel/',response_model=OrderRead,tags=['Orders'])
+def order_cancel(pk:int,db:Session=Depends(get_db)):
+    return crud.cancel_order(db,pk)
+
+
