@@ -345,3 +345,19 @@ def delete_favorite(db:Session,pk:int,user_id:int):
     db.delete(favorite)
     db.commit()
     return {'message':'Favorite deleted'}
+
+def get_shop_statistics(db:Session):
+    orders = db.query(Order).filter(Order.status=='PAID')
+    total = orders.with_entities(func.sum(Order.total_price)).scalar() or Decimal('0.00')
+    count = orders.count()
+    return {
+        'users_count':db.query(User).count(),
+        'products_count':db.query(Product).count(),
+        'categories_count':db.query(Category).count(),
+        'orders_count':db.query(Order).count(),
+        'orders_total':total,
+        'average_order_total':total/count if count else Decimal('0.00'),
+        'most_expensive_product':db.query(Product).order_by(Product.price.desc()).first(),
+        'cheapest_product':db.query(Product).order_by(Product.price).first(),
+        'low_stock_products':get_low_stock_products(db)
+    }
