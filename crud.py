@@ -296,3 +296,28 @@ def get_user_statistics(db:Session,user_id:int):
     last_order = orders[0] if orders else None
     most_expensive = db.query(Order).filter(Order.user_id==user_id,Order.status=='PAID').order_by(Order.total_price.desc()).first()
     return {'user_id':user_id,'orders_count':len(orders),'total_spent':total,'last_order':last_order,'most_expensive_order':most_expensive,'purchased_products':[]}
+
+
+def add_review(db:Session,product_id:int,review:ReviewCreate):
+    get_user(db,review.user_id)
+    get_product(db,product_id)
+    new_review = Review(user_id=review.user_id,product_id=product_id,rating=review.rating,comment=review.comment)
+    db.add(new_review)
+    db.commit()
+    db.refresh(new_review)
+    return new_review
+
+def get_product_reviews(db:Session,product_id:int):
+    get_product(db,product_id)
+    reviews = db.query(Review).filter(Review.product_id==product_id).all()
+    rating = db.query(func.avg(Review.rating)).filter(Review.product_id==product_id).scalar()
+    return {'product_id':product_id,'average_rating':float(rating) if rating else None,'reviews_count':len(reviews),'reviews':reviews}
+
+def delete_review(db:Session,pk:int,user_id:int):
+    review = db.query(Review).filter(Review.id==pk,Review.user_id==user_id).first()
+    if not review:
+        raise HTTPException(status_code=404,detail='Review not found')
+    db.delete(review)
+    db.commit()
+    return {'message':'Review deleted'}
+
