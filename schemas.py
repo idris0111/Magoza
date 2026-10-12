@@ -139,4 +139,21 @@ class OrderPage(BaseModel):
     pages: int
     items: list[OrderShort]
 
-OrderCreate,OrderStatusUpdate,OrderItemRead,OrderShort,OrderRead,OrderPage
+class PurchasedProductRead(BaseModel):
+    product_id: int | None
+    product_name: str
+    orders_count: int
+    total_quantity: int
+    total_spent: Decimal
+
+
+class UserStatistics(BaseModel):
+    user_id: int
+    orders_count: int
+    total_spent: Decimal
+    last_order: OrderShort | None = None
+    most_expensive_order: OrderShort | None = None
+    purchased_products: list[PurchasedProductRead] = Field(default_factory=list)
+
+PurchasedProductRead,UserStatistics
+
