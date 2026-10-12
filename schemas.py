@@ -13,7 +13,7 @@ class UserUpdate(BaseModel):
 
 class UserRead(UserCreate):
     id: int
-    created_at: datetime
+    create_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 class UserShort(BaseModel):

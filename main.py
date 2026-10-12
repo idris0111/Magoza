@@ -11,7 +11,6 @@ app = FastAPI(title='Internet Shop API')
 Base.metadata.create_all(bind=engine)
 
 
-# Users
 @app.get('/users/',response_model=list[UserRead],tags=['Users'])
 def users(db:Session=Depends(get_db)):
     return crud.get_users(db)

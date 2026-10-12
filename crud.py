@@ -1,3 +1,4 @@
+
 from decimal import Decimal
 from fastapi import HTTPException
 from sqlalchemy import func
@@ -39,6 +40,8 @@ def update_user(db:Session,pk:int,user:UserUpdate):
 
 def delete_user(db:Session,pk:int):
     user = get_user(db,pk)
+    if user.orders:
+        raise HTTPException(status_code=400,detail='User has orders')
     db.delete(user)
     db.commit()
     return {'message':'User deleted'}
@@ -90,14 +93,21 @@ def get_category_products(db:Session,pk:int):
     get_category(db,pk)
     return db.query(Product).filter(Product.category_id==pk).all()
 
-def get_products(db:Session,search:str=None,category_id:int=None,sort_price:str=None,page:int=1,size:int=10):
+
+def get_products(db:Session,search:str=None,category_id:int=None,sort_price:str=None,page:int=1,size:int=10,min_price:Decimal=None,max_price:Decimal=None):
     if page<1 or size<1:
         raise HTTPException(status_code=400,detail='Invalid page or size')
+    if min_price is not None and max_price is not None and min_price>max_price:
+        raise HTTPException(status_code=400,detail='Minimum price cannot exceed maximum price')
     products = db.query(Product)
     if search:
         products = products.filter(Product.name.ilike(f'%{search}%'))
     if category_id is not None:
         products = products.filter(Product.category_id==category_id)
+    if min_price is not None:
+        products = products.filter(Product.price>=min_price)
+    if max_price is not None:
+        products = products.filter(Product.price<=max_price)
     if sort_price=='asc':
         products = products.order_by(Product.price.asc(),Product.id)
     elif sort_price=='desc':
@@ -112,7 +122,8 @@ def get_product(db:Session,pk:int):
     product = db.query(Product).filter(Product.id==pk).first()
     if not product:
         raise HTTPException(status_code=404,detail='Product not found')
-    product.average_rating = db.query(func.avg(Review.rating)).filter(Review.product_id==pk).scalar()
+    rating = db.query(func.avg(Review.rating)).filter(Review.product_id==pk).scalar()
+    product.average_rating = float(rating) if rating is not None else None
     return product
 
 def create_product(db:Session,product:ProductCreate):
@@ -204,6 +215,7 @@ def clear_cart(db:Session,user_id:int):
     db.commit()
     return {'message':'Cart cleared'}
 
+
 def create_order(db:Session,order:OrderCreate):
     get_user(db,order.user_id)
     items = db.query(CartItem).filter(CartItem.user_id==order.user_id).all()
@@ -288,6 +300,25 @@ def get_purchase_history(db:Session,user_id:int):
     get_user(db,user_id)
     return db.query(Order).filter(Order.user_id==user_id,Order.status=='PAID').order_by(Order.id.desc()).all()
 
+def get_purchased_products(db:Session,user_id:int):
+    get_user(db,user_id)
+    products = db.query(
+        OrderItem.product_id,
+        OrderItem.product_name,
+        func.count(OrderItem.id).label('orders_count'),
+        func.sum(OrderItem.quantity).label('total_quantity'),
+        func.sum(OrderItem.price*OrderItem.quantity).label('total_spent')).join(Order).filter(Order.user_id==user_id,Order.status=='PAID').group_by(OrderItem.product_id,OrderItem.product_name).all()
+    result = []
+    for product in products:
+        result.append({
+            'product_id':product.product_id,
+            'product_name':product.product_name,
+            'orders_count':product.orders_count,
+            'total_quantity':product.total_quantity,
+            'total_spent':product.total_spent
+        })
+    return result
+
 def get_user_statistics(db:Session,user_id:int):
     orders = get_purchase_history(db,user_id)
     total = Decimal('0.00')
@@ -295,7 +326,15 @@ def get_user_statistics(db:Session,user_id:int):
         total += order.total_price
     last_order = orders[0] if orders else None
     most_expensive = db.query(Order).filter(Order.user_id==user_id,Order.status=='PAID').order_by(Order.total_price.desc()).first()
-    return {'user_id':user_id,'orders_count':len(orders),'total_spent':total,'last_order':last_order,'most_expensive_order':most_expensive,'purchased_products':[]}
+    products = get_purchased_products(db,user_id)
+    return {
+        'user_id':user_id,
+        'orders_count':len(orders),
+        'total_spent':total,
+        'last_order':last_order,
+        'most_expensive_order':most_expensive,
+        'purchased_products':products
+    }
 
 
 def add_review(db:Session,product_id:int,review:ReviewCreate):
@@ -311,7 +350,7 @@ def get_product_reviews(db:Session,product_id:int):
     get_product(db,product_id)
     reviews = db.query(Review).filter(Review.product_id==product_id).all()
     rating = db.query(func.avg(Review.rating)).filter(Review.product_id==product_id).scalar()
-    return {'product_id':product_id,'average_rating':float(rating) if rating else None,'reviews_count':len(reviews),'reviews':reviews}
+    return {'product_id':product_id,'average_rating':float(rating) if rating is not None else None,'reviews_count':len(reviews),'reviews':reviews}
 
 def delete_review(db:Session,pk:int,user_id:int):
     review = db.query(Review).filter(Review.id==pk,Review.user_id==user_id).first()
@@ -346,10 +385,38 @@ def delete_favorite(db:Session,pk:int,user_id:int):
     db.commit()
     return {'message':'Favorite deleted'}
 
+
 def get_shop_statistics(db:Session):
     orders = db.query(Order).filter(Order.status=='PAID')
-    total = orders.with_entities(func.sum(Order.total_price)).scalar() or Decimal('0.00')
+    total = db.query(func.sum(Order.total_price)).filter(Order.status=='PAID').scalar() or Decimal('0.00')
     count = orders.count()
+
+    best_selling = db.query(
+        Product.id,
+        func.sum(OrderItem.quantity).label('total_sold')
+    ).join(OrderItem).join(Order).filter(
+        Order.status=='PAID'
+    ).group_by(Product.id).order_by(
+        func.sum(OrderItem.quantity).desc()
+    ).first()
+
+    best_product = None
+    if best_selling:
+        best_product = db.query(Product).filter(Product.id==best_selling.id).first()
+
+    top_user = db.query(
+        User.id,
+        func.sum(Order.total_price).label('total_spent')
+    ).join(Order).filter(
+        Order.status=='PAID'
+    ).group_by(User.id).order_by(
+        func.sum(Order.total_price).desc()
+    ).first()
+
+    best_user = None
+    if top_user:
+        best_user = db.query(User).filter(User.id==top_user.id).first()
+
     return {
         'users_count':db.query(User).count(),
         'products_count':db.query(Product).count(),
@@ -357,7 +424,9 @@ def get_shop_statistics(db:Session):
         'orders_count':db.query(Order).count(),
         'orders_total':total,
         'average_order_total':total/count if count else Decimal('0.00'),
+        'best_selling_product':best_product,
         'most_expensive_product':db.query(Product).order_by(Product.price.desc()).first(),
-        'cheapest_product':db.query(Product).order_by(Product.price).first(),
-        'low_stock_products':get_low_stock_products(db)
+        'cheapest_product':db.query(Product).order_by(Product.price.asc()).first(),
+        'low_stock_products':get_low_stock_products(db),
+        'top_spending_user':best_user
     }

@@ -10,7 +10,7 @@ class User(Base):
     name = Column(String(100),nullable=True)
     email = Column(String(100),nullable=False,unique=True)
     create_at = Column(DateTime,server_default=func.now())
-    cart_item = relationship('Cartitem',back_populates='user',cascade='all,delete-orphan')
+    cart_items = relationship('CartItem',back_populates='user',cascade='all,delete-orphan')
     orders = relationship('Order',back_populates='user',cascade='all,delete-orphan')
     reviews = relationship('Review',back_populates='user',cascade='all,delete-orphan')
     favorites = relationship('Favorite',back_populates='user',cascade='all,delete-orphan')
@@ -29,7 +29,7 @@ class Product(Base):
     description = Column(Text,nullable=True)
     price = Column(Numeric(10,2),nullable=False)
     stock = Column(Integer,nullable=False,default=0)
-    category_id = Column(Integer,ForeignKey('categories.id'),nullable=False)
+    category_id = Column(Integer,ForeignKey('category.id'),nullable=False)
 
     __table_args__ = (CheckConstraint('price > 0'),CheckConstraint("stock >= 0"))
     category = relationship('Category', back_populates='products')
@@ -42,7 +42,7 @@ class CartItem(Base):
     __tablename__ = 'cart_items'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('product.id'), nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
 
     __table_args__ = (UniqueConstraint('user_id', 'product_id'),CheckConstraint('quantity >= 1'),)
@@ -73,7 +73,7 @@ class OrderItem(Base):
 
     id = Column(Integer, primary_key=True)
     order_id = Column(Integer, ForeignKey('orders.id'), nullable=False)
-    product_id = Column(Integer, ForeignKey('products.id', ondelete='SET NULL'), nullable=True)
+    product_id = Column(Integer, ForeignKey('product.id', ondelete='SET NULL'), nullable=True)
     product_name = Column(String(150), nullable=False)
     quantity = Column(Integer, nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
@@ -92,7 +92,7 @@ class Review(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('product.id'), nullable=False)
     rating = Column(Integer, nullable=False)
     comment = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
@@ -106,7 +106,7 @@ class Favorite(Base):
     __tablename__ = 'favorites'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('product.id'), nullable=False)
     __table_args__ = (UniqueConstraint('user_id', 'product_id'),)
     user = relationship('User', back_populates='favorites')
     product = relationship('Product', back_populates='favorites')
