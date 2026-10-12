@@ -125,7 +125,6 @@ def order_status_update(pk:int,data:OrderStatusUpdate,db:Session=Depends(get_db)
 def order_cancel(pk:int,db:Session=Depends(get_db)):
     return crud.cancel_order(db,pk)
 
-# Purchase History
 @app.get('/users/{user_id}/orders/',response_model=list[OrderShort],tags=['Purchase History'])
 def user_orders(user_id:int,db:Session=Depends(get_db)):
     return crud.get_user_orders(db,user_id)
@@ -137,5 +136,35 @@ def purchase_history(user_id:int,db:Session=Depends(get_db)):
 @app.get('/users/{user_id}/statistics/',response_model=UserStatistics,tags=['Purchase History'])
 def user_statistics(user_id:int,db:Session=Depends(get_db)):
     return crud.get_user_statistics(db,user_id)
+
+
+# Reviews
+@app.post('/products/{product_id}/reviews/',response_model=ReviewRead,tags=['Reviews'])
+def review_create(product_id:int,review:ReviewCreate,db:Session=Depends(get_db)):
+    return crud.add_review(db,product_id,review)
+
+@app.get('/products/{product_id}/reviews/',response_model=ProductReviewsRead,tags=['Reviews'])
+def product_reviews(product_id:int,db:Session=Depends(get_db)):
+    return crud.get_product_reviews(db,product_id)
+
+@app.delete('/reviews/{pk}/',tags=['Reviews'])
+def review_delete(pk:int,user_id:int,db:Session=Depends(get_db)):
+    return crud.delete_review(db,pk,user_id)
+
+@app.post('/favorites/',response_model=FavoriteRead,tags=['Favorites'])
+def favorite_create(favorite:FavoriteCreate,db:Session=Depends(get_db)):
+    return crud.add_favorite(db,favorite)
+
+@app.get('/favorites/',response_model=list[FavoriteRead],tags=['Favorites'])
+def favorites(user_id:int,db:Session=Depends(get_db)):
+    return crud.get_favorites(db,user_id)
+
+@app.delete('/favorites/{pk}/',tags=['Favorites'])
+def favorite_delete(pk:int,user_id:int,db:Session=Depends(get_db)):
+    return crud.delete_favorite(db,pk,user_id)
+
+@app.get('/statistics/',response_model=ShopStatistics,tags=['Statistics'])
+def shop_statistics(db:Session=Depends(get_db)):
+    return crud.get_shop_statistics(db)
 
 
