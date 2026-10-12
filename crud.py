@@ -282,3 +282,17 @@ def update_order_status(db:Session,pk:int,data:OrderStatusUpdate):
     db.commit()
     db.refresh(order)
     return order
+
+
+def get_purchase_history(db:Session,user_id:int):
+    get_user(db,user_id)
+    return db.query(Order).filter(Order.user_id==user_id,Order.status=='PAID').order_by(Order.id.desc()).all()
+
+def get_user_statistics(db:Session,user_id:int):
+    orders = get_purchase_history(db,user_id)
+    total = Decimal('0.00')
+    for order in orders:
+        total += order.total_price
+    last_order = orders[0] if orders else None
+    most_expensive = db.query(Order).filter(Order.user_id==user_id,Order.status=='PAID').order_by(Order.total_price.desc()).first()
+    return {'user_id':user_id,'orders_count':len(orders),'total_spent':total,'last_order':last_order,'most_expensive_order':most_expensive,'purchased_products':[]}
